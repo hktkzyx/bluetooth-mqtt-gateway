@@ -1,7 +1,7 @@
 #include "serial_command.h"
 
 SerialBTReceiver::SerialBTReceiver(BluetoothSerial* pSerial, uint8_t* pBuffer,
-                                   int buffer_size)
+                                   const int& buffer_size)
     : pSerialBT(pSerial),
       pCommandBuffer(pBuffer),
       command_buffer_size(buffer_size){};

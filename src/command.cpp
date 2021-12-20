@@ -5,7 +5,8 @@
  */
 #include "command.h"
 
-std::unique_ptr<Command> ParseBTCommand(uint8_t* pBuffer, int buffer_size,
+std::unique_ptr<Command> ParseBTCommand(uint8_t* pBuffer,
+                                        const int& buffer_size,
                                         Preferences* pPrefs,
                                         BluetoothSerial* pSerialBT) {
     CommandType command_type = static_cast<CommandType>(pBuffer[0]);
@@ -50,7 +51,8 @@ std::unique_ptr<Command> ParseBTCommand(uint8_t* pBuffer, int buffer_size,
     }
 }
 
-BTAddDeviceCommand::BTAddDeviceCommand(std::string& name, DeviceType type,
+BTAddDeviceCommand::BTAddDeviceCommand(const std::string& name,
+                                       const DeviceType& type,
                                        esp_bd_addr_t address,
                                        Preferences* pPrefs,
                                        BluetoothSerial* pSerialBT)
@@ -104,7 +106,8 @@ bool BTAddDeviceCommand::execute() {
     return true;
 }
 
-BTAddDeviceCommand ParseBTAddDeviceCommand(uint8_t* pBuffer, int buffer_size,
+BTAddDeviceCommand ParseBTAddDeviceCommand(uint8_t* pBuffer,
+                                           const int& buffer_size,
                                            Preferences* pPrefs,
                                            BluetoothSerial* pSerialBT) {
     if (static_cast<CommandType>(pBuffer[0]) != CommandType::BTAddDevice) {
@@ -132,7 +135,7 @@ BTAddDeviceCommand ParseBTAddDeviceCommand(uint8_t* pBuffer, int buffer_size,
     return BTAddDeviceCommand(name, type, mac_addr, pPrefs, pSerialBT);
 }
 
-BTRemoveDeviceCommand::BTRemoveDeviceCommand(std::string& name,
+BTRemoveDeviceCommand::BTRemoveDeviceCommand(const std::string& name,
                                              Preferences* pPrefs,
                                              BluetoothSerial* pSerialBT)
     : name(name), pPrefs(pPrefs), pSerialBT(pSerialBT){};
@@ -177,7 +180,7 @@ bool BTRemoveDeviceCommand::execute() {
 }
 
 BTRemoveDeviceCommand ParseBTRemoveDeviceCommand(uint8_t* pBuffer,
-                                                 int buffer_size,
+                                                 const int& buffer_size,
                                                  Preferences* pPrefs,
                                                  BluetoothSerial* pSerialBT) {
     if (static_cast<CommandType>(pBuffer[0]) != CommandType::BTRemoveDevice) {
@@ -195,7 +198,8 @@ BTRemoveDeviceCommand ParseBTRemoveDeviceCommand(uint8_t* pBuffer,
     return BTRemoveDeviceCommand(name, pPrefs, pSerialBT);
 }
 
-BTGetDeviceCommand::BTGetDeviceCommand(std::string& name, Preferences* pPrefs,
+BTGetDeviceCommand::BTGetDeviceCommand(const std::string& name,
+                                       Preferences* pPrefs,
                                        BluetoothSerial* pSerialBT)
     : name(name), pPrefs(pPrefs), pSerialBT(pSerialBT){};
 BTGetDeviceCommand::BTGetDeviceCommand(Preferences* pPrefs,
@@ -228,7 +232,8 @@ bool BTGetDeviceCommand::execute() {
     }
 }
 
-BTGetDeviceCommand ParseBTGetDeviceCommand(uint8_t* pBuffer, int buffer_size,
+BTGetDeviceCommand ParseBTGetDeviceCommand(uint8_t* pBuffer,
+                                           const int& buffer_size,
                                            Preferences* pPrefs,
                                            BluetoothSerial* pSerialBT) {
     if (static_cast<CommandType>(pBuffer[0]) != CommandType::BTGetDevice) {
@@ -266,7 +271,7 @@ bool BTClearCommand::execute() {
     }
 }
 
-BTClearCommand ParseBTClearCommand(uint8_t* pBuffer, int buffer_size,
+BTClearCommand ParseBTClearCommand(uint8_t* pBuffer, const int& buffer_size,
                                    Preferences* pPrefs,
                                    BluetoothSerial* pSerialBT) {
     return BTClearCommand(pPrefs, pSerialBT);

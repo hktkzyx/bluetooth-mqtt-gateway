@@ -19,7 +19,7 @@ class SerialBTReceiver {
 
    public:
     SerialBTReceiver(BluetoothSerial* pSerial, uint8_t* pBuffer,
-                     int buffer_size);
+                     const int &buffer_size);
     bool Receive(void);
     void ClearBuffer(void);
 };

@@ -37,6 +37,7 @@ enum class CommandType : uint8_t {
  */
 class Command {
    public:
+    virtual ~Command(){};
     virtual bool execute(void) { return false; }
 };
 
@@ -45,7 +46,8 @@ class NullCommand : public Command {
     bool execute(void) final { return true; }
 };
 
-std::unique_ptr<Command> ParseBTCommand(uint8_t* pBuffer, int buffer_size,
+std::unique_ptr<Command> ParseBTCommand(uint8_t* pBuffer,
+                                        const int& buffer_size,
                                         Preferences* pPrefs,
                                         BluetoothSerial* pSerialBT);
 
@@ -57,7 +59,7 @@ class BTAddDeviceCommand : public Command {
     std::string name;
     DeviceType type;
     BLEAddress mac;
-    BTAddDeviceCommand(std::string& name, DeviceType type,
+    BTAddDeviceCommand(const std::string& name, const DeviceType& type,
                        esp_bd_addr_t address, Preferences* pPrefs,
                        BluetoothSerial* pSerialBT);
     BTAddDeviceCommand(Preferences* pPrefs, BluetoothSerial* pSerialBT);
@@ -79,7 +81,8 @@ class BTAddDeviceCommand : public Command {
  * @param [in] pSerialBT
  * @return BTAddDeviceCommand
  */
-BTAddDeviceCommand ParseBTAddDeviceCommand(uint8_t* pBuffer, int buffer_size,
+BTAddDeviceCommand ParseBTAddDeviceCommand(uint8_t* pBuffer,
+                                           const int& buffer_size,
                                            Preferences* pPrefs,
                                            BluetoothSerial* pSerialBT);
 
@@ -89,7 +92,7 @@ BTAddDeviceCommand ParseBTAddDeviceCommand(uint8_t* pBuffer, int buffer_size,
 class BTRemoveDeviceCommand : public Command {
    public:
     std::string name;
-    BTRemoveDeviceCommand(std::string& name, Preferences* pPrefs,
+    BTRemoveDeviceCommand(const std::string& name, Preferences* pPrefs,
                           BluetoothSerial* pSerialBT);
     BTRemoveDeviceCommand(Preferences* pPrefs, BluetoothSerial* pSerialBT);
     bool execute() override;
@@ -110,7 +113,7 @@ class BTRemoveDeviceCommand : public Command {
  * @return BTRemoveDeviceCommand
  */
 BTRemoveDeviceCommand ParseBTRemoveDeviceCommand(uint8_t* pBuffer,
-                                                 int buffer_size,
+                                                 const int& buffer_size,
                                                  Preferences* pPrefs,
                                                  BluetoothSerial* pSeialBT);
 
@@ -120,7 +123,7 @@ BTRemoveDeviceCommand ParseBTRemoveDeviceCommand(uint8_t* pBuffer,
 class BTGetDeviceCommand : public Command {
    public:
     std::string name;
-    BTGetDeviceCommand(std::string& name, Preferences* pPrefs,
+    BTGetDeviceCommand(const std::string& name, Preferences* pPrefs,
                        BluetoothSerial* pSerialBT);
     BTGetDeviceCommand(Preferences* pPrefs, BluetoothSerial* pSerialBT);
     bool execute() override;
@@ -140,7 +143,8 @@ class BTGetDeviceCommand : public Command {
  * @param [in] pSerialBT
  * @return BTGetDeviceCommand
  */
-BTGetDeviceCommand ParseBTGetDeviceCommand(uint8_t* pBuffer, int buffer_size,
+BTGetDeviceCommand ParseBTGetDeviceCommand(uint8_t* pBuffer,
+                                           const int& buffer_size,
                                            Preferences* pPrefs,
                                            BluetoothSerial* pSerialBT);
 
@@ -167,7 +171,7 @@ class BTClearCommand : public Command {
  * @param [in] pSerialBT
  * @return BTClearCommand
  */
-BTClearCommand ParseBTClearCommand(uint8_t* pBuffer, int buffer_size,
+BTClearCommand ParseBTClearCommand(uint8_t* pBuffer, const int& buffer_size,
                                    Preferences* pPrefs,
                                    BluetoothSerial* pSerialBT);
 #endif
