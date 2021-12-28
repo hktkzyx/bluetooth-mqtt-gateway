@@ -45,19 +45,22 @@ void EnvironmentSensor::NotificationCallback(BLERemoteCharacteristic* pRemoteC,
         log_i(">>>Update temperature");
         temperature = GetTemperature(pData);
         is_temperature_updated = true;
-        log_i("%.2f °C<<<", temperature);
+        log_i("%.2f °C", temperature);
+        log_i("<<<Update temperature")
     }
     if (HumidityUUID.equals(pRemoteC->getUUID())) {
         log_i(">>>Update humidity");
         humidity = GetHumidity(pData);
         is_humidity_updated = true;
-        log_i("%.2f\\%<<<", humidity);
+        log_i("%.2f\%", humidity);
+        log_i("<<<Update humidity");
     }
     if (IlluminanceUUID.equals(pRemoteC->getUUID())) {
         log_i(">>>Update illuminance");
         illuminance = GetIlluminance(pData);
         is_illuminance_updated = true;
-        log_i("%.1f lx<<<", illuminance);
+        log_i("%.1f lx", illuminance);
+        log_i("<<<Update illuminance");
     }
     return;
 }
@@ -167,7 +170,7 @@ std::unique_ptr<Device> GetDevice(const DeviceType& device_type,
             break;
         }
         default:
-            log_i("DeviceType %d not found.",
+            log_i("DeviceType 0x%02x not found.",
                   static_cast<uint8_t>(device_type));
             return nullptr;
             break;
