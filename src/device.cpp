@@ -46,7 +46,7 @@ void EnvironmentSensor::NotificationCallback(BLERemoteCharacteristic* pRemoteC,
         temperature = GetTemperature(pData);
         is_temperature_updated = true;
         log_i("%.2f °C", temperature);
-        log_i("<<<Update temperature")
+        log_i("<<<Update temperature");
     }
     if (HumidityUUID.equals(pRemoteC->getUUID())) {
         log_i(">>>Update humidity");
