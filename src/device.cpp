@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <BLEDevice.h>
 
+#include "secrets.h"
+
 BLEUUID EnvironmentalSensorServiceUUID = BLEUUID(static_cast<uint16_t>(0x181A));
 BLEUUID TemperatureUUID = BLEUUID(static_cast<uint16_t>(0x2A6E));
 BLEUUID HumidityUUID = BLEUUID(static_cast<uint16_t>(0x2A6F));
@@ -65,8 +67,13 @@ void EnvironmentSensor::NotificationCallback(BLERemoteCharacteristic* pRemoteC,
     return;
 }
 
-Device::Device(const BLEAddress& address, BLEClient* pClient, BLEScan* pScan)
-    : address(address), pClient(pClient), pScan(pScan) {}
+Device::Device(const BLEAddress& address, BLEClient* pClient, BLEScan* pScan,
+               PubSubClient* pMQTTClient, const char* pMQTTClientID)
+    : address(address),
+      pClient(pClient),
+      pScan(pScan),
+      pMQTTClient(pMQTTClient),
+      pMQTTClientID(pMQTTClientID) {}
 BLEAddress Device::GetAddress() { return address; }
 
 /**
@@ -136,14 +143,99 @@ void EnvironmentSensor::Update() {
         // Wait all characteristic update.
     }
     pClient->disconnect();
+    is_temperature_updated = false;
+    is_humidity_updated = false;
+    is_illuminance_updated = false;
     pClient->setClientCallbacks(nullptr);
     return;
 }
 
+/**
+ * @brief Get a string of mac address without colon.
+ * @param [in] address BLEAddress
+ * @return std::string
+ */
+std::string GetMACWithoutColon(BLEAddress& address) {
+    std::string result = address.toString();
+    result.erase(std::remove(result.begin(), result.end(), ':'), result.end());
+    return result;
+}
+
+/**
+ * @brief Push BLE data through MQTT.
+ */
 void EnvironmentSensor::Push() {
-    is_temperature_updated = false;
-    is_humidity_updated = false;
-    is_illuminance_updated = false;
+    bool connected = false;
+    std::string mqtt_user = MQTT_USER;
+    std::string mqtt_password = MQTT_PASSWORD;
+    if (mqtt_user.empty() || mqtt_password.empty()) {
+        connected = pMQTTClient->connect(pMQTTClientID);
+
+    } else {
+        connected = pMQTTClient->connect(pMQTTClientID, mqtt_user.c_str(),
+                                         mqtt_password.c_str());
+    }
+    if (connected) {
+        std::string suffix = GetMACWithoutColon(address);
+        std::string state_topic =
+            "homeassistant/sensor/environment_sensor-" + suffix + "/state";
+        std::string temperature_config_topic =
+            "homeassistant/sensor/environment_sensor-" + suffix +
+            "/temperature/config";
+        std::string temperature_config_payload =
+            "{\"device_class\":\"temperature\",\"unit_of_measurement\":\"°C\","
+            "\"state_class\":\"measurement\",\"name\":\"temperature_" +
+            suffix + "\",\"state_topic\":\"" + state_topic +
+            "\",\"unique_id\":\"environment_sensor_" + suffix +
+            "_temperature\",\"device\":{\"identifiers\":\"" + suffix +
+            "\",\"name\":\"environment_sensor-" + suffix +
+            "\"},\"value_template\":\"{{value_json.temperature}}\"";
+        std::string humidity_config_topic =
+            "homeassistant/sensor/environment_sensor-" + suffix +
+            "/humidity/config";
+        std::string humidity_config_payload =
+            "{\"device_class\":\"humidity\",\"unit_of_measurement\":\"%\","
+            "\"state_class\":\"measurement\",\"name\":\"humidity_" +
+            suffix + "\",\"state_topic\":\"" + state_topic +
+            "\",\"unique_id\":\"environment_sensor_" + suffix +
+            "_humidity\",\"device\":{\"identifiers\":\"" + suffix +
+            "\",\"name\":\"environment_sensor-" + suffix +
+            "\"},\"value_template\":\"{{value_json.humidity}}\"";
+        std::string illuminance_config_topic =
+            "homeassistant/sensor/environment_sensor-" + suffix +
+            "/illuminance/config";
+        std::string illuminance_config_payload =
+            "{\"device_class\":\"illuminance\",\"unit_of_measurement\":\"lx\","
+            "\"state_class\":\"measurement\",\"name\":\"illuminance_" +
+            suffix + "\",\"state_topic\":\"" + state_topic +
+            "\",\"unique_id\":\"environment_sensor_" + suffix +
+            "_illuminance\",\"device\":{\"identifiers\":\"" + suffix +
+            "\",\"name\":\"environment_sensor-" + suffix +
+            "\"},\"value_template\":\"{{value_json.illuminance}}\"";
+        log_i(">>>Publish config topics");
+        pMQTTClient->publish(temperature_config_topic.c_str(),
+                             temperature_config_payload.c_str());
+        pMQTTClient->publish(humidity_config_topic.c_str(),
+                             humidity_config_payload.c_str());
+        pMQTTClient->publish(illuminance_config_topic.c_str(),
+                             illuminance_config_payload.c_str());
+        log_i("<<<Publish config topics");
+        std::string temperature_string =
+            (temperature == -1) ? "\"unknown\"" : std::to_string(temperature);
+        std::string humidity_string =
+            (humidity == -1) ? "\"unknown\"" : std::to_string(humidity);
+        std::string illuminance_string =
+            (illuminance == -1) ? "\"unknown\"" : std::to_string(illuminance);
+        std::string state_payload = "{\"temperature\":" + temperature_string +
+                                    ",\"humidity\":" + humidity_string +
+                                    ",\"illuminance\":" + illuminance_string +
+                                    "}";
+        log_i(">>>Publish state topics");
+        pMQTTClient->publish(state_topic.c_str(), state_payload.c_str());
+        log_i("<<<Publish state topics");
+    } else {
+        log_i("Fail to connect to MQTT server.");
+    }
 }
 
 void GetStoredDeviceTypeAddress(const std::string& name, Preferences* pPrefs,
@@ -160,12 +252,13 @@ void GetStoredDeviceTypeAddress(const std::string& name, Preferences* pPrefs,
 
 std::unique_ptr<Device> GetDevice(const DeviceType& device_type,
                                   const BLEAddress& address, BLEClient* pClient,
-                                  BLEScan* pScan) {
+                                  BLEScan* pScan, PubSubClient* pMQTTClient,
+                                  const char* pMQTTClientID) {
     switch (device_type) {
         case DeviceType::BluetoothEnvironmentSensor: {
             log_i("Get an environment sensor.");
-            std::unique_ptr<Device> dev(
-                new EnvironmentSensor(address, pClient, pScan));
+            std::unique_ptr<Device> dev(new EnvironmentSensor(
+                address, pClient, pScan, pMQTTClient, pMQTTClientID));
             return dev;
             break;
         }

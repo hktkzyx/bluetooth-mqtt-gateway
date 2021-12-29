@@ -8,6 +8,7 @@
 
 #include <BLEClient.h>
 #include <Preferences.h>
+#include <PubSubClient.h>
 #include <esp32-hal-log.h>
 
 #include <memory>
@@ -47,7 +48,8 @@ class DefaultAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
  */
 class Device {
    public:
-    Device(const BLEAddress& address, BLEClient* pClient, BLEScan* pScan);
+    Device(const BLEAddress& address, BLEClient* pClient, BLEScan* pScan,
+           PubSubClient* pMQTTClient, const char* pMQTTClientID);
     BLEAddress GetAddress();
     virtual ~Device(){};
     virtual void Update(){};
@@ -60,6 +62,8 @@ class Device {
     BLEAddress address;
     BLEClient* pClient;
     BLEScan* pScan;
+    PubSubClient* pMQTTClient;
+    const char* pMQTTClientID;
 };
 
 /**
@@ -104,7 +108,8 @@ void GetStoredDeviceTypeAddress(const std::string& name, Preferences* pPrefs,
  */
 std::unique_ptr<Device> GetDevice(const DeviceType& device_type,
                                   const BLEAddress& address, BLEClient* pClient,
-                                  BLEScan* pScan);
+                                  BLEScan* pScan, PubSubClient* pMQTTClient,
+                                  const char* pMQTTClientID);
 
 /**
  * All the following function convert the raw characteristic value to real
