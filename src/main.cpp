@@ -39,8 +39,7 @@ void BTCommandProcess(const uint32_t& interval) {
     if (static_cast<uint32_t>(now - last) >= interval) {
         last = now;
         // Receive and process command from BT serial.
-        SerialBTReceiver receiver(&SerialBT, pCommandBuffer, kBufferSize);
-        if (receiver.Receive()) {
+        if (SerialReceive(SerialBT, pCommandBuffer, kBufferSize)) {
             std::unique_ptr<Command> cmd =
                 ParseBTCommand(pCommandBuffer, kBufferSize, &prefs, &SerialBT);
             if (cmd->execute()) {

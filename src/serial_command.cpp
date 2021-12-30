@@ -50,3 +50,43 @@ void SerialBTReceiver::ClearBuffer(void) {
         pCommandBuffer[i] = 0;
     }
 }
+
+bool SerialReceive(BluetoothSerial& serial_bt, uint8_t* pCommandBuffer,
+                   const int& buffer_size) {
+    SerialClearBuffer(serial_bt, pCommandBuffer, buffer_size);
+    bool is_read_command = false;
+    int cursor = 0;
+    bool success = false;
+    while (serial_bt.available()) {
+        if (cursor >= buffer_size) {
+            is_read_command = false;
+            success = false;
+            log_w("Command buffer overflow!");
+            break;
+        }
+        uint8_t value = serial_bt.read();
+        if (value == 0x01) {
+            is_read_command = true;
+            continue;
+        }
+        if (value == 0x04) {
+            pCommandBuffer[cursor] = value;
+            is_read_command = false;
+            success = true;
+            break;
+        }
+        if (is_read_command) {
+            pCommandBuffer[cursor] = value;
+            ++cursor;
+            continue;
+        }
+    }
+    return success;
+}
+
+void SerialClearBuffer(BluetoothSerial& serial_bt, uint8_t* pCommandBuffer,
+                       const int& buffer_size) {
+    for (int i = 0; i < buffer_size; ++i) {
+        pCommandBuffer[i] = 0;
+    }
+}
