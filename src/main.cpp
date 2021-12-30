@@ -104,7 +104,7 @@ void WifiSetup() {
     WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
     uint32_t start = millis();
     while (static_cast<uint32_t>(millis() - start) <= 10000U &&
-           WiFi.status() != WL_CONNECTED) {
+           WiFi.isConnected()) {
     }
     Serial.printf("WiFi connected. IP is %s\n",
                   WiFi.localIP().toString().c_str());
