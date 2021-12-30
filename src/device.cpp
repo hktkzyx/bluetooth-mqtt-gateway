@@ -52,7 +52,7 @@ void EnvironmentSensor::NotificationCallback(BLERemoteCharacteristic* pRemoteC,
         log_i(">>>Update humidity");
         humidity = GetHumidity(pData);
         is_humidity_updated = true;
-        log_i("%.2f%s", humidity, '%');
+        log_i("%.2f%%", humidity);
         log_i("<<<Update humidity");
     }
     if (IlluminanceUUID.equals(pRemoteC->getUUID())) {
@@ -65,19 +65,29 @@ void EnvironmentSensor::NotificationCallback(BLERemoteCharacteristic* pRemoteC,
     return;
 }
 
-Device::Device(const BLEAddress& address, BLEClient* pClient, BLEScan* pScan,
-               PubSubClient* pMQTTClient, const char* pMQTTClientID)
-    : address(address),
-      pClient(pClient),
-      pScan(pScan),
-      pMQTTClient(pMQTTClient),
-      pMQTTClientID(pMQTTClientID) {}
-BLEAddress Device::GetAddress() { return address; }
+Device::Device(const BLEAddress& address) : address(address) {}
+BLEAddress Device::GetAddress() const { return address; }
+
+/**
+ * @brief Update data from BLE.
+ * @param [in] pClient
+ * @param [in] pScan
+ */
+void Device::Update(BLEClient* pClient, BLEScan* pScan) {}
+
+/**
+ * @brief Push data through MQTT.
+ * @param [in] wifi
+ * @param [in] mqtt_client
+ * @param [in] pMQTTClientID
+ */
+void Device::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
+                  const char* pMQTTClientID) {}
 
 /**
  * @brief Read the notification data and save to static class member.
  */
-void EnvironmentSensor::Update() {
+void EnvironmentSensor::Update(BLEClient* pClient, BLEScan* pScan) {
     bool is_scanned = false;
     DefaultAdvertisedDeviceCallbacks scan_callback(address, pScan, &is_scanned);
     pScan->setAdvertisedDeviceCallbacks(&scan_callback);
@@ -149,22 +159,32 @@ std::string GetMACWithoutColon(BLEAddress& address) {
 /**
  * @brief Push BLE data through MQTT.
  */
-void EnvironmentSensor::Push() {
+void EnvironmentSensor::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
+                             const char* pMQTTClientID) {
     if (!is_temperature_updated && !is_humidity_updated &&
         !is_illuminance_updated) {
         return;
     }
-    bool connected = false;
+    is_temperature_updated = false;
+    is_humidity_updated = false;
+    is_illuminance_updated = false;
+    if (!wifi.isConnected()) {
+        if (!wifi.reconnect()) {
+            log_i("Fail to connect to WiFi.");
+            return;
+        }
+    }
+    bool mqtt_connected = false;
     std::string mqtt_user = MQTT_USER;
     std::string mqtt_password = MQTT_PASSWORD;
     if (mqtt_user.empty() || mqtt_password.empty()) {
-        connected = pMQTTClient->connect(pMQTTClientID);
+        mqtt_connected = mqtt_client.connect(pMQTTClientID);
 
     } else {
-        connected = pMQTTClient->connect(pMQTTClientID, mqtt_user.c_str(),
-                                         mqtt_password.c_str());
+        mqtt_connected = mqtt_client.connect(pMQTTClientID, mqtt_user.c_str(),
+                                             mqtt_password.c_str());
     }
-    if (connected) {
+    if (mqtt_connected) {
         std::string suffix = GetMACWithoutColon(address);
         std::string state_topic =
             "homeassistant/sensor/environment_sensor-" + suffix + "/state";
@@ -204,12 +224,12 @@ void EnvironmentSensor::Push() {
             "\",\"name\":\"environment_sensor-" + suffix +
             "\"},\"value_template\":\"{{value_json.illuminance}}\"";
         log_i(">>>Publish config topics");
-        pMQTTClient->publish(temperature_config_topic.c_str(),
-                             temperature_config_payload.c_str());
-        pMQTTClient->publish(humidity_config_topic.c_str(),
-                             humidity_config_payload.c_str());
-        pMQTTClient->publish(illuminance_config_topic.c_str(),
-                             illuminance_config_payload.c_str());
+        mqtt_client.publish(temperature_config_topic.c_str(),
+                            temperature_config_payload.c_str());
+        mqtt_client.publish(humidity_config_topic.c_str(),
+                            humidity_config_payload.c_str());
+        mqtt_client.publish(illuminance_config_topic.c_str(),
+                            illuminance_config_payload.c_str());
         log_i("<<<Publish config topics");
         std::string temperature_string =
             (temperature == -1) ? "\"unknown\"" : std::to_string(temperature);
@@ -222,14 +242,12 @@ void EnvironmentSensor::Push() {
                                     ",\"illuminance\":" + illuminance_string +
                                     "}";
         log_i(">>>Publish state topics");
-        pMQTTClient->publish(state_topic.c_str(), state_payload.c_str());
+        mqtt_client.publish(state_topic.c_str(), state_payload.c_str());
         log_i("<<<Publish state topics");
     } else {
         log_i("Fail to connect to MQTT server.");
     }
-    is_temperature_updated = false;
-    is_humidity_updated = false;
-    is_illuminance_updated = false;
+    return;
 }
 
 void GetStoredDeviceTypeAddress(const std::string& name, Preferences* pPrefs,
@@ -245,14 +263,11 @@ void GetStoredDeviceTypeAddress(const std::string& name, Preferences* pPrefs,
 }
 
 std::unique_ptr<Device> GetDevice(const DeviceType& device_type,
-                                  const BLEAddress& address, BLEClient* pClient,
-                                  BLEScan* pScan, PubSubClient* pMQTTClient,
-                                  const char* pMQTTClientID) {
+                                  const BLEAddress& address) {
     switch (device_type) {
         case DeviceType::BluetoothEnvironmentSensor: {
             log_i("Get an environment sensor.");
-            std::unique_ptr<Device> dev(new EnvironmentSensor(
-                address, pClient, pScan, pMQTTClient, pMQTTClientID));
+            std::unique_ptr<Device> dev(new EnvironmentSensor(address));
             return dev;
             break;
         }

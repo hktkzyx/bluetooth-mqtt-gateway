@@ -9,7 +9,7 @@
 #include <BLEClient.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
-#include <esp32-hal-log.h>
+#include <WiFi.h>
 
 #include <memory>
 
@@ -44,22 +44,15 @@ class DefaultAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
  */
 class Device {
    public:
-    Device(const BLEAddress& address, BLEClient* pClient, BLEScan* pScan,
-           PubSubClient* pMQTTClient, const char* pMQTTClientID);
-    BLEAddress GetAddress();
+    Device(const BLEAddress& address);
+    BLEAddress GetAddress() const;
     virtual ~Device(){};
-    virtual void Update(){};
-    virtual void Push(){};
-    // virtual void NotificationCallback(BLERemoteCharacteristic* pRemoteC,
-    //                                   uint8_t* pData, size_t length,
-    //                                   bool isNotify){};
+    virtual void Update(BLEClient* pClient, BLEScan* pScan);
+    virtual void Push(WiFiClass& wifi, PubSubClient& mqtt_client,
+                      const char* pMQTTClientID);
 
    protected:
     BLEAddress address;
-    BLEClient* pClient;
-    BLEScan* pScan;
-    PubSubClient* pMQTTClient;
-    const char* pMQTTClientID;
 };
 
 /**
@@ -68,8 +61,9 @@ class Device {
 class EnvironmentSensor : public Device {
    public:
     using Device::Device;
-    void Update() override;
-    void Push() override;
+    void Update(BLEClient* pClient, BLEScan* pScan) override;
+    void Push(WiFiClass& wifi, PubSubClient& mqtt_client,
+              const char* pMQTTClientID) override;
     static void NotificationCallback(BLERemoteCharacteristic* pRemoteC,
                                      uint8_t* pData, size_t length,
                                      bool isNotify);
@@ -103,9 +97,7 @@ void GetStoredDeviceTypeAddress(const std::string& name, Preferences* pPrefs,
  * @return std::unique_ptr<Device>
  */
 std::unique_ptr<Device> GetDevice(const DeviceType& device_type,
-                                  const BLEAddress& address, BLEClient* pClient,
-                                  BLEScan* pScan, PubSubClient* pMQTTClient,
-                                  const char* pMQTTClientID);
+                                  const BLEAddress& address);
 
 /**
  * All the following function convert the raw characteristic value to real
