@@ -133,6 +133,7 @@ void setup() {
     prefs.begin("devices");
     BLEDevice::init("ESP32");
     pClient = BLEDevice::createClient();
+    pClient->setClientCallbacks(new DefaultClientCallbacks());
     pScan = BLEDevice::getScan();
     WifiSetup();
     MQTTSetup();

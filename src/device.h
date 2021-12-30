@@ -20,12 +20,8 @@
  */
 class DefaultClientCallbacks : public BLEClientCallbacks {
    public:
-    DefaultClientCallbacks(const BLEAddress& address);
     void onConnect(BLEClient* pClient);
     void onDisconnect(BLEClient* pClient);
-
-   private:
-    BLEAddress remote_device_address;
 };
 
 /**

@@ -10,13 +10,11 @@ BLEUUID TemperatureUUID = BLEUUID(static_cast<uint16_t>(0x2A6E));
 BLEUUID HumidityUUID = BLEUUID(static_cast<uint16_t>(0x2A6F));
 BLEUUID IlluminanceUUID = BLEUUID(static_cast<uint16_t>(0x2AFB));
 
-DefaultClientCallbacks::DefaultClientCallbacks(const BLEAddress& address)
-    : remote_device_address(address) {}
 void DefaultClientCallbacks::onConnect(BLEClient* pClient) {
-    log_i("Connect to %s", remote_device_address.toString().c_str());
+    log_i("Connect to %s", pClient->getPeerAddress().toString().c_str());
 }
 void DefaultClientCallbacks::onDisconnect(BLEClient* pClient) {
-    log_i("Connect to %s", remote_device_address.toString().c_str());
+    log_i("Disconnect to %s", pClient->getPeerAddress().toString().c_str());
 }
 
 DefaultAdvertisedDeviceCallbacks::DefaultAdvertisedDeviceCallbacks(
@@ -54,7 +52,7 @@ void EnvironmentSensor::NotificationCallback(BLERemoteCharacteristic* pRemoteC,
         log_i(">>>Update humidity");
         humidity = GetHumidity(pData);
         is_humidity_updated = true;
-        log_i("%.2f\%", humidity);
+        log_i("%.2f%s", humidity, '%');
         log_i("<<<Update humidity");
     }
     if (IlluminanceUUID.equals(pRemoteC->getUUID())) {
@@ -83,24 +81,17 @@ void EnvironmentSensor::Update() {
     bool is_scanned = false;
     DefaultAdvertisedDeviceCallbacks scan_callback(address, pScan, &is_scanned);
     pScan->setAdvertisedDeviceCallbacks(&scan_callback);
-    pScan->setActiveScan(true);
-    pScan->clearResults();
-    pScan->start(1, true);
+    pScan->start(1, false);
+    pScan->setAdvertisedDeviceCallbacks(
+        nullptr);  // Avoid point to local variables after exit.
     if (!is_scanned) {
         log_i("Environment Sensor %s not found", address.toString().c_str());
-        pScan->setAdvertisedDeviceCallbacks(
-            nullptr);  // Avoid point to local variables after exit.
         return;
     }
-    pScan->setAdvertisedDeviceCallbacks(nullptr);
     log_i("Environment Sensor %s found", address.toString().c_str());
-    DefaultClientCallbacks client_callback(address);
-    pClient->setClientCallbacks(&client_callback);
     if (!(pClient->connect(address))) {
         log_i("Connect to Environment Sensor %s fail.",
               address.toString().c_str());
-        pClient->setClientCallbacks(
-            nullptr);  // Avoid point to local variables after exit.
         return;
     }
     log_i("Connect to Environment Sensor %s succuss.",
@@ -110,8 +101,6 @@ void EnvironmentSensor::Update() {
     if (pRemoteService == nullptr) {
         log_i("Environmental sensor service not found.");
         pClient->disconnect();
-        pClient->setClientCallbacks(
-            nullptr);  // Avoid point to local variables after exit.
         return;
     }
     log_i("Environmental sensor service found.");
@@ -143,10 +132,6 @@ void EnvironmentSensor::Update() {
         // Wait all characteristic update.
     }
     pClient->disconnect();
-    is_temperature_updated = false;
-    is_humidity_updated = false;
-    is_illuminance_updated = false;
-    pClient->setClientCallbacks(nullptr);
     return;
 }
 
@@ -165,6 +150,10 @@ std::string GetMACWithoutColon(BLEAddress& address) {
  * @brief Push BLE data through MQTT.
  */
 void EnvironmentSensor::Push() {
+    if (!is_temperature_updated && !is_humidity_updated &&
+        !is_illuminance_updated) {
+        return;
+    }
     bool connected = false;
     std::string mqtt_user = MQTT_USER;
     std::string mqtt_password = MQTT_PASSWORD;
@@ -183,7 +172,8 @@ void EnvironmentSensor::Push() {
             "homeassistant/sensor/environment_sensor-" + suffix +
             "/temperature/config";
         std::string temperature_config_payload =
-            "{\"device_class\":\"temperature\",\"unit_of_measurement\":\"°C\","
+            "{\"device_class\":\"temperature\",\"unit_of_measurement\":"
+            "\"°C\","
             "\"state_class\":\"measurement\",\"name\":\"temperature_" +
             suffix + "\",\"state_topic\":\"" + state_topic +
             "\",\"unique_id\":\"environment_sensor_" + suffix +
@@ -205,7 +195,8 @@ void EnvironmentSensor::Push() {
             "homeassistant/sensor/environment_sensor-" + suffix +
             "/illuminance/config";
         std::string illuminance_config_payload =
-            "{\"device_class\":\"illuminance\",\"unit_of_measurement\":\"lx\","
+            "{\"device_class\":\"illuminance\",\"unit_of_measurement\":"
+            "\"lx\","
             "\"state_class\":\"measurement\",\"name\":\"illuminance_" +
             suffix + "\",\"state_topic\":\"" + state_topic +
             "\",\"unique_id\":\"environment_sensor_" + suffix +
@@ -236,6 +227,9 @@ void EnvironmentSensor::Push() {
     } else {
         log_i("Fail to connect to MQTT server.");
     }
+    is_temperature_updated = false;
+    is_humidity_updated = false;
+    is_illuminance_updated = false;
 }
 
 void GetStoredDeviceTypeAddress(const std::string& name, Preferences* pPrefs,
