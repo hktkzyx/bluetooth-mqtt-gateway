@@ -60,7 +60,7 @@ class Device {
  */
 class EnvironmentSensor : public Device {
    public:
-    using Device::Device;
+    EnvironmentSensor(const BLEAddress& address);
     void Update(BLEClient* pClient, BLEScan* pScan) override;
     void Push(WiFiClass& wifi, PubSubClient& mqtt_client,
               const char* pMQTTClientID) override;

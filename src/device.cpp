@@ -29,6 +29,28 @@ void DefaultAdvertisedDeviceCallbacks::onResult(
     }
 }
 
+Device::Device(const BLEAddress& address) : address(address) {}
+BLEAddress Device::GetAddress() const { return address; }
+
+/**
+ * @brief Update data from BLE.
+ * @param [in] pClient
+ * @param [in] pScan
+ */
+void Device::Update(BLEClient* pClient, BLEScan* pScan) {}
+
+/**
+ * @brief Push data through MQTT.
+ * @param [in] wifi
+ * @param [in] mqtt_client
+ * @param [in] pMQTTClientID
+ */
+void Device::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
+                  const char* pMQTTClientID) {}
+
+EnvironmentSensor::EnvironmentSensor(const BLEAddress& address)
+    : Device(address) {}
+
 float EnvironmentSensor::temperature = -1;
 float EnvironmentSensor::humidity = -1;
 float EnvironmentSensor::illuminance = -1;
@@ -64,25 +86,6 @@ void EnvironmentSensor::NotificationCallback(BLERemoteCharacteristic* pRemoteC,
     }
     return;
 }
-
-Device::Device(const BLEAddress& address) : address(address) {}
-BLEAddress Device::GetAddress() const { return address; }
-
-/**
- * @brief Update data from BLE.
- * @param [in] pClient
- * @param [in] pScan
- */
-void Device::Update(BLEClient* pClient, BLEScan* pScan) {}
-
-/**
- * @brief Push data through MQTT.
- * @param [in] wifi
- * @param [in] mqtt_client
- * @param [in] pMQTTClientID
- */
-void Device::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
-                  const char* pMQTTClientID) {}
 
 /**
  * @brief Read the notification data and save to static class member.

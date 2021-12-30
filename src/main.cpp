@@ -22,17 +22,17 @@
 
 const std::string kRoom = "bedroom";
 const int kMaxDevNum = 5;
-const int kBufferSize = 128;
+const int kCommandBufferSize = 128;
 const char kMQTTClientID[] = "VIkqE19I";
+const char kMQTTDomain[] = MQTT_DOMAIN;
 const uint16_t kMQTTPort = 1883;
 BluetoothSerial SerialBT;
 Preferences prefs;
-uint8_t pCommandBuffer[kBufferSize] = {0};
+uint8_t pCommandBuffer[kCommandBufferSize] = {0};
 BLEScan* pScan = nullptr;
 BLEClient* pClient = nullptr;
 WiFiClient esp_client;
 PubSubClient mqtt_client(esp_client);
-const char kMQTTDomain[] = MQTT_DOMAIN;
 
 void BTCommandProcess(const uint32_t& interval) {
     static uint32_t last = 0;
@@ -40,9 +40,9 @@ void BTCommandProcess(const uint32_t& interval) {
     if (static_cast<uint32_t>(now - last) >= interval) {
         last = now;
         // Receive and process command from BT serial.
-        if (SerialReceive(SerialBT, pCommandBuffer, kBufferSize)) {
-            std::unique_ptr<Command> cmd =
-                ParseBTCommand(pCommandBuffer, kBufferSize, &prefs, &SerialBT);
+        if (SerialReceive(SerialBT, pCommandBuffer, kCommandBufferSize)) {
+            std::unique_ptr<Command> cmd = ParseBTCommand(
+                pCommandBuffer, kCommandBufferSize, &prefs, &SerialBT);
             if (cmd->execute()) {
                 Serial.println("Command execute success!");
             } else {
@@ -133,7 +133,7 @@ void setup() {
     Serial.begin(115200);
     SerialBT.begin("ESP32 Bluetooth MQTT Gateway");
     prefs.begin("devices");
-    BLEDevice::init("ESP32");
+    BLEDevice::init("ESP32 BLE MQTT Gateway");
     pClient = BLEDevice::createClient();
     pClient->setClientCallbacks(new DefaultClientCallbacks());
     pScan = BLEDevice::getScan();
@@ -145,5 +145,5 @@ void loop() {
     BTCommandProcess(1000);
     StoredBLEDeviceProcess(1000);
     // SampleDeviceDebug();
-    HeapDebug(1000);
+    // HeapDebug(1000);
 }
