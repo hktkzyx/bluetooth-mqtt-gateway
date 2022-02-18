@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <BLEDevice.h>
 
+#include <cmath>
+
 #include "secrets.h"
 
 BLEUUID EnvironmentalSensorServiceUUID = BLEUUID(static_cast<uint16_t>(0x181A));
@@ -202,7 +204,7 @@ void EnvironmentSensor::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
             "\",\"unique_id\":\"environment_sensor_" + suffix +
             "_temperature\",\"device\":{\"identifiers\":\"" + suffix +
             "\",\"name\":\"environment_sensor-" + suffix +
-            "\"},\"value_template\":\"{{value_json.temperature}}\"";
+            "\"},\"value_template\":\"{{value_json.temperature}}\"}";
         std::string humidity_config_topic =
             "homeassistant/sensor/environment_sensor-" + suffix +
             "/humidity/config";
@@ -213,7 +215,7 @@ void EnvironmentSensor::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
             "\",\"unique_id\":\"environment_sensor_" + suffix +
             "_humidity\",\"device\":{\"identifiers\":\"" + suffix +
             "\",\"name\":\"environment_sensor-" + suffix +
-            "\"},\"value_template\":\"{{value_json.humidity}}\"";
+            "\"},\"value_template\":\"{{value_json.humidity}}\"}";
         std::string illuminance_config_topic =
             "homeassistant/sensor/environment_sensor-" + suffix +
             "/illuminance/config";
@@ -225,7 +227,7 @@ void EnvironmentSensor::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
             "\",\"unique_id\":\"environment_sensor_" + suffix +
             "_illuminance\",\"device\":{\"identifiers\":\"" + suffix +
             "\",\"name\":\"environment_sensor-" + suffix +
-            "\"},\"value_template\":\"{{value_json.illuminance}}\"";
+            "\"},\"value_template\":\"{{value_json.illuminance}}\"}";
         log_i(">>>Publish config topics");
         mqtt_client.publish(temperature_config_topic.c_str(),
                             temperature_config_payload.c_str());
@@ -235,11 +237,16 @@ void EnvironmentSensor::Push(WiFiClass& wifi, PubSubClient& mqtt_client,
                             illuminance_config_payload.c_str());
         log_i("<<<Publish config topics");
         std::string temperature_string =
-            (temperature == -1) ? "\"unknown\"" : std::to_string(temperature);
+            (temperature == -1)
+                ? "\"unknown\""
+                : std::to_string(round(10 * temperature) / 10.0);
         std::string humidity_string =
-            (humidity == -1) ? "\"unknown\"" : std::to_string(humidity);
+            (humidity == -1) ? "\"unknown\""
+                             : std::to_string(round(10 * humidity) / 10.0);
         std::string illuminance_string =
-            (illuminance == -1) ? "\"unknown\"" : std::to_string(illuminance);
+            (illuminance == -1)
+                ? "\"unknown\""
+                : std::to_string(round(10 * illuminance) / 10.0);
         std::string state_payload = "{\"temperature\":" + temperature_string +
                                     ",\"humidity\":" + humidity_string +
                                     ",\"illuminance\":" + illuminance_string +
