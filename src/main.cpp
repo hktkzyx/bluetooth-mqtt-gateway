@@ -20,7 +20,7 @@
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-const std::string kRoom = "bedroom";
+const std::string kDeviceName = "sensor";
 const int kMaxDevNum = 5;
 const int kCommandBufferSize = 128;
 const char kMQTTClientID[] = "VIkqE19I";
@@ -59,7 +59,7 @@ void StoredBLEDeviceProcess(const uint32_t& interval) {
         last = now;
         // Read and publish BLE data.
         for (int i = 1; i <= kMaxDevNum; ++i) {
-            std::string dev_name = kRoom + std::to_string(i);
+            std::string dev_name = kDeviceName + std::to_string(i);
             DeviceType dev_type = DeviceType::Unknown;
             BLEAddress dev_addr("00:00:00:00:00:00");
             BLEAddress unknown_addr("00:00:00:00:00:00");
