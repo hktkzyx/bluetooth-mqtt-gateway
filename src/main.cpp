@@ -23,7 +23,7 @@
 const std::string kDeviceName = "sensor";
 const int kMaxDevNum = 5;
 const int kCommandBufferSize = 128;
-const char kMQTTClientID[] = "VIkqE19I";
+const char kMQTTClientID[] = MQTT_CLIENT_ID;
 const char kMQTTDomain[] = MQTT_DOMAIN;
 const uint16_t kMQTTPort = 1883;
 BluetoothSerial SerialBT;
