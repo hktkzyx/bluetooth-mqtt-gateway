@@ -7,6 +7,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <esp_task_wdt.h>
 
 #include <string>
 #include <vector>
@@ -19,6 +20,9 @@
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
+
+#define WATCHDOG_TIMEOUT 300        // seconds
+#define WATCHDOG_RESET_INTERVAL 60  // seconds
 
 const std::string kDeviceName = "sensor";
 const int kMaxDevNum = 5;
@@ -129,7 +133,19 @@ void MQTTSetup() {
     }
 }
 
+void WatchdogReset(const uint32_t interval) {
+    static uint32_t last_reset = 0;
+    uint32_t now = millis();
+    if (static_cast<uint32_t>(now - last_reset) >= interval) {
+        esp_task_wdt_reset();
+        Serial.println("Reset watchdog done");
+        last_reset = now;
+    }
+}
+
 void setup() {
+    esp_task_wdt_init(WATCHDOG_TIMEOUT, true);
+    esp_task_wdt_add(NULL);
     Serial.begin(115200);
     SerialBT.begin("ESP32 Bluetooth MQTT Gateway");
     prefs.begin("devices");
@@ -142,6 +158,7 @@ void setup() {
 }
 
 void loop() {
+    WatchdogReset(1000 * WATCHDOG_RESET_INTERVAL);
     BTCommandProcess(1000);
     StoredBLEDeviceProcess(1000);
     // SampleDeviceDebug();
