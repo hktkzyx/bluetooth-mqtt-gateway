@@ -7,6 +7,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <esp_task_wdt.h>
 
 #include <string>
 #include <vector>
@@ -20,10 +21,13 @@
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-const std::string kRoom = "bedroom";
+#define WATCHDOG_TIMEOUT 300        // seconds
+#define WATCHDOG_RESET_INTERVAL 60  // seconds
+
+const std::string kDeviceName = "sensor";
 const int kMaxDevNum = 5;
 const int kCommandBufferSize = 128;
-const char kMQTTClientID[] = "VIkqE19I";
+const char kMQTTClientID[] = MQTT_CLIENT_ID;
 const char kMQTTDomain[] = MQTT_DOMAIN;
 const uint16_t kMQTTPort = 1883;
 BluetoothSerial SerialBT;
@@ -59,7 +63,7 @@ void StoredBLEDeviceProcess(const uint32_t& interval) {
         last = now;
         // Read and publish BLE data.
         for (int i = 1; i <= kMaxDevNum; ++i) {
-            std::string dev_name = kRoom + std::to_string(i);
+            std::string dev_name = kDeviceName + std::to_string(i);
             DeviceType dev_type = DeviceType::Unknown;
             BLEAddress dev_addr("00:00:00:00:00:00");
             BLEAddress unknown_addr("00:00:00:00:00:00");
@@ -129,7 +133,19 @@ void MQTTSetup() {
     }
 }
 
+void WatchdogReset(const uint32_t interval) {
+    static uint32_t last_reset = 0;
+    uint32_t now = millis();
+    if (static_cast<uint32_t>(now - last_reset) >= interval) {
+        esp_task_wdt_reset();
+        Serial.println("Reset watchdog done");
+        last_reset = now;
+    }
+}
+
 void setup() {
+    esp_task_wdt_init(WATCHDOG_TIMEOUT, true);
+    esp_task_wdt_add(NULL);
     Serial.begin(115200);
     SerialBT.begin("ESP32 Bluetooth MQTT Gateway");
     prefs.begin("devices");
@@ -142,6 +158,7 @@ void setup() {
 }
 
 void loop() {
+    WatchdogReset(1000 * WATCHDOG_RESET_INTERVAL);
     BTCommandProcess(1000);
     StoredBLEDeviceProcess(1000);
     // SampleDeviceDebug();
